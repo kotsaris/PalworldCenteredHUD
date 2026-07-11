@@ -18,7 +18,7 @@ With CenteredHUD — the HUD framed in a centered 16:9 region:
 
 ## Download
 
-The latest release is available on the [Releases page](https://github.com/kotsaris/PalworldCenteredHUD/releases). Each release includes a ready-to-install `CenteredHUD.zip` containing the mod.
+The latest release is available on the [Releases page](https://github.com/kotsaris/PalworldCenteredHUD/releases). Each release includes two ready-to-install zips: `CenteredHUD.zip` (the main mod) and `TimeSet.zip` (the standalone world-clock dev mod — see below).
 
 ## Install
 
@@ -37,7 +37,7 @@ See [CenteredHUD/README.md](CenteredHUD/README.md#installation) for full instruc
 
 ## Bonus: TimeSet
 
-The repo also contains [TimeSet](TimeSet/) — a tiny standalone UE4SS mod born as a development aid: press HOME to jump the world clock straight to night, END for morning (useful for testing weather/lighting-dependent HUD effects). Install it the same way: copy the `TimeSet` folder into `ue4ss\Mods\`.
+The repo also contains [TimeSet](TimeSet/) — a tiny standalone UE4SS mod born as a development aid: press HOME to jump the world clock straight to night, END for morning (useful for testing weather/lighting-dependent HUD effects). Every release ships it as its own `TimeSet.zip`; install it the same way as CenteredHUD (Vortex **Install From File**, or extract the `TimeSet` folder into `ue4ss\Mods\`).
 
 ## Usage & Configuration
 
