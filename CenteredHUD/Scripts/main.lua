@@ -68,6 +68,12 @@ end
 local DUMP_MATCH = { "Stamina", "Compass", "Vinette", "Effect", "Cold", "Weapon" }
 local POLL_MS = 1000                    -- enforcement poll interval in ms
 local REASSERT_TICKS = 30               -- every N polls, re-apply (catches widget recycling)
+local CACHE_REFRESH_TICKS = 15          -- every N polls, drop the widget cache and re-scan
+local REPAIR_TICKS = 5                  -- run the stray-repair walk every N polls
+
+-- Verbose diagnostics (per-write forensic logs, match-count logs). Off for
+-- normal play; enable via config.lua's dev_mode = true when investigating.
+local DEV_MODE = false
 local KEY_TOGGLE = Key.F6               -- toggle centered/vanilla
 local KEY_DUMP = Key.F8                 -- dump all in-viewport widgets to log
 local KEY_RELOAD_CFG = Key.F9           -- re-read config.lua without a reload
@@ -99,6 +105,19 @@ local OFFSETS = {}
 -- Per-widget-class opacity multipliers from config.lua: class name -> 0..1.
 local OPACITY = {}
 
+-- Live-instance cache. FindAllOf is a full scan of the global object array
+-- (UE4SS's object cache must stay disabled on Palworld), and the enforcement
+-- poll needs instances of ~a dozen classes: scanning every second causes a
+-- visible 1 Hz hitch. Widgets live as long as the world, so scan once per
+-- class, keep the (pre-filtered) references, and drop a class's list when
+-- any entry dies or on the periodic refresh. Empty results are never cached
+-- so classes that spawn later are still discovered.
+local instanceCache = {}
+
+local function flushInstanceCache()
+    instanceCache = {}
+end
+
 -- Originals for KEEP_FULLSCREEN slots, kept apart from the wrapper originals:
 -- the stray-repair pass restores anything found in `originals`, and the
 -- expanded effect overlays must not be caught by it.
@@ -114,6 +133,39 @@ local function valid(o)
 end
 
 local function near(a, b) return math.abs(a - b) < EPS end
+
+-- Returns live, non-archetype instances of a class, from cache when every
+-- cached entry is still alive, re-scanning otherwise.
+local function cachedInstances(cls)
+    local entry = instanceCache[cls]
+    if entry then
+        for i = 1, #entry do
+            if not valid(entry[i]) then
+                entry = nil
+                break
+            end
+        end
+        if entry then return entry end
+    end
+    local fresh = {}
+    local ok, list = pcall(FindAllOf, cls)
+    if ok and list then
+        for i = 1, #list do
+            local w = list[i]
+            if valid(w) then
+                local okN, fn = pcall(function() return w:GetFullName() end)
+                if okN then
+                    local nm = tostring(fn)
+                    if not nm:find("Default__") and not nm:find(" /Game/", 1, true) then
+                        fresh[#fresh + 1] = w
+                    end
+                end
+            end
+        end
+    end
+    if #fresh > 0 then instanceCache[cls] = fresh end
+    return fresh
+end
 
 -- Squeeze an anchor coordinate into the target box: 0 -> box min, 1 -> box
 -- max, 0.5 (screen center) stays put. Applied to a full-stretch child this
@@ -217,6 +269,7 @@ local function loadUserConfig()
     if type(cfg.dump_match) == "table" then DUMP_MATCH = cfg.dump_match end
     OFFSETS = (type(cfg.offsets) == "table") and cfg.offsets or {}
     OPACITY = (type(cfg.opacity) == "table") and cfg.opacity or {}
+    if type(cfg.dev_mode) == "boolean" then DEV_MODE = cfg.dev_mode end
     local n = 0
     for _ in pairs(OFFSETS) do n = n + 1 end
     return true, string.format("config.lua applied, %d offset entr%s", n, n == 1 and "y" or "ies")
@@ -350,12 +403,8 @@ end
 -- tree. Originals are captured per slot so the operation is idempotent and
 -- reversible. Returns how many children were (re)positioned this pass.
 local function applyToCanvasChildren(w, box, restore)
-    -- Live instances only: blueprint archetypes (paths under /Game/) have
-    -- widget trees too and must not be modified.
-    local okNm, wName = pcall(function() return w:GetFullName() end)
-    if not okNm then return 0 end
-    local nm = tostring(wName)
-    if nm:find("Default__") or nm:find(" /Game/", 1, true) then return 0 end
+    -- Callers pass instances from cachedInstances(), which already excludes
+    -- class defaults and blueprint archetypes.
     local root = findHudCanvas(w)
     if not valid(root) then return 0 end
     local okC, n = pcall(function() return root:GetChildrenCount() end)
@@ -402,7 +451,7 @@ local function applyToCanvasChildren(w, box, restore)
                                 touched = touched + 1
                                 -- Forensic: every write logged with old -> new so
                                 -- anomalous anchor math is visible in UE4SS.log.
-                                if logCount < logLimit then
+                                if DEV_MODE and logCount < logLimit then
                                     log("write slot %s: (%.3f,%.3f)-(%.3f,%.3f) -> (%.3f,%.3f)-(%.3f,%.3f)%s",
                                         key, cur.minX, cur.minY, cur.maxX, cur.maxY,
                                         t.minX, t.minY, t.maxX, t.maxY, restore and " [restore]" or "")
@@ -422,6 +471,9 @@ local function applyToCanvasChildren(w, box, restore)
     -- squeezed (its key is still in originals) or that carries our exact
     -- squeeze signature after a reload wiped the map, but which is not one of
     -- the current wrappers. Heals widgets caught by construction races.
+    -- Throttled: the walk is the most expensive part of a pass, and strays
+    -- are rare; restores always run it so F6 leaves nothing behind.
+    if not restore and tick % REPAIR_TICKS ~= 0 then return touched end
     local queue, qi, scanned = { root }, 1, 0
     while qi <= #queue and scanned < 128 do
         local node = queue[qi]
@@ -498,14 +550,12 @@ local function applyKeepFullscreen(box, restore)
     local bh = box and (box.ymax - box.ymin) or 1
     if bw <= 0 or bh <= 0 then return end
     for _, clsName in ipairs(KEEP_FULLSCREEN) do
-        local ok, list = pcall(FindAllOf, clsName)
-        if ok and list then
+        local list = cachedInstances(clsName)
+        if list then
             for i = 1, #list do
                 local wd = list[i]
                 if valid(wd) then
-                    local okN, fn = pcall(function() return wd:GetFullName() end)
-                    if okN and not tostring(fn):find("Default__")
-                            and not tostring(fn):find(" /Game/", 1, true) then
+                    do
                         local okS, slot = pcall(function() return wd.Slot end)
                         if okS and valid(slot) then
                             local okK, sc = pcall(function() return slot:GetClass():GetFName():ToString() end)
@@ -529,7 +579,7 @@ local function applyKeepFullscreen(box, restore)
                                             slot:SetAnchors({ Minimum = { X = t.minX, Y = t.minY },
                                                               Maximum = { X = t.maxX, Y = t.maxY } })
                                         end)
-                                        if okW and logCount < logLimit then
+                                        if okW and DEV_MODE and logCount < logLimit then
                                             log("write fx %s (%s): (%.3f,%.3f)-(%.3f,%.3f) -> (%.3f,%.3f)-(%.3f,%.3f)%s",
                                                 key, clsName, cur.minX, cur.minY, cur.maxX, cur.maxY,
                                                 t.minX, t.minY, t.maxX, t.maxY, restore and " [restore]" or "")
@@ -556,14 +606,12 @@ local function applyOffsets(zero)
         local dx = zero and 0 or (tonumber(off.dx) or 0)
         local dy = zero and 0 or (tonumber(off.dy) or 0)
         local matched = 0
-        local ok, list = pcall(FindAllOf, clsName)
-        if ok and list then
+        local list = cachedInstances(clsName)
+        if list then
             for i = 1, #list do
                 local w = list[i]
                 if valid(w) then
-                    local okN, fn = pcall(function() return w:GetFullName() end)
-                    if okN and not tostring(fn):find("Default__")
-                            and not tostring(fn):find(" /Game/", 1, true) then
+                    do
                         local okT, errT = pcall(function() w:SetRenderTranslation({ X = dx, Y = dy }) end)
                         if okT then
                             matched = matched + 1
@@ -577,7 +625,7 @@ local function applyOffsets(zero)
         end
         -- Logged on change; "matched 0 live instance(s)" means the class name
         -- in config.lua does not exist in the running game.
-        if offsetMatchLogged[clsName] ~= matched and logCount < logLimit then
+        if DEV_MODE and offsetMatchLogged[clsName] ~= matched and logCount < logLimit then
             log("offset %s: matched %d live instance(s)", clsName, matched)
             logCount = logCount + 1
             offsetMatchLogged[clsName] = matched
@@ -594,21 +642,19 @@ local function applyOpacity(reset)
     for clsName, val in pairs(OPACITY) do
         local a = reset and 1 or math.max(0, math.min(1, tonumber(val) or 1))
         local matched = 0
-        local ok, list = pcall(FindAllOf, clsName)
-        if ok and list then
+        local list = cachedInstances(clsName)
+        if list then
             for i = 1, #list do
                 local w = list[i]
                 if valid(w) then
-                    local okN, fn = pcall(function() return w:GetFullName() end)
-                    if okN and not tostring(fn):find("Default__")
-                            and not tostring(fn):find(" /Game/", 1, true) then
+                    do
                         local okT = pcall(function() w:SetRenderOpacity(a) end)
                         if okT then matched = matched + 1 end
                     end
                 end
             end
         end
-        if opacityMatchLogged[clsName] ~= matched and logCount < logLimit then
+        if DEV_MODE and opacityMatchLogged[clsName] ~= matched and logCount < logLimit then
             log("opacity %s: matched %d live instance(s)", clsName, matched)
             logCount = logCount + 1
             opacityMatchLogged[clsName] = matched
@@ -622,12 +668,13 @@ local function enforce()
     if not box then return end
     tick = tick + 1
     if tick % REASSERT_TICKS == 0 then applied = {} end
+    if tick % CACHE_REFRESH_TICKS == 0 then flushInstanceCache() end
     applyOffsets(false)
     applyOpacity(false)
     applyKeepFullscreen(box, false)
     for _, cls in ipairs(TARGET_WIDGETS) do
-        local ok, list = pcall(FindAllOf, cls)
-        if ok and list ~= nil then
+        local list = cachedInstances(cls)
+        if list ~= nil then
             for i = 1, #list do
                 local w = list[i]
                 if valid(w) then
@@ -641,7 +688,7 @@ local function enforce()
                     end
                     if key and not applied[key] and applyAnchors(w, box) then
                         applied[key] = true
-                        if logCount < logLimit then
+                        if DEV_MODE and logCount < logLimit then
                             log("anchored %s to (%.3f,%.3f)-(%.3f,%.3f)",
                                 key, box.xmin, box.ymin, box.xmax, box.ymax)
                             logCount = logCount + 1
@@ -662,8 +709,8 @@ end
 local function restoreVanilla()
     local box = { xmin = 0, ymin = 0, xmax = 1, ymax = 1 }
     for _, cls in ipairs(TARGET_WIDGETS) do
-        local ok, list = pcall(FindAllOf, cls)
-        if ok and list ~= nil then
+        local list = cachedInstances(cls)
+        if list ~= nil then
             for i = 1, #list do
                 local w = list[i]
                 if valid(w) then
@@ -866,6 +913,7 @@ RegisterKeyBind(KEY_RELOAD_CFG, function()
         local ok, err = pcall(function()
             local before = OFFSETS
             local _, msg = loadUserConfig()
+            flushInstanceCache()
             log("config reload: %s", tostring(msg))
             -- Zero nudges for classes removed from the config, or they stick.
             for cls in pairs(before) do
@@ -891,6 +939,6 @@ RegisterKeyBind(KEY_RELOAD_CFG, function()
 end)
 
 local _, cfgMsg = loadUserConfig()
-log("v2.8 loaded -- hud_aspect=%.4f (or width_frac=%s), min_aspect=%.4f, poll=%dms (F6 toggle, F8 dump, F9 config reload)",
-    HUD_ASPECT, HUD_WIDTH_FRACTION and tostring(HUD_WIDTH_FRACTION) or "nil", MIN_ASPECT, POLL_MS)
+log("v2.9 loaded -- hud_aspect=%.4f (or width_frac=%s), min_aspect=%.4f, poll=%dms, dev_mode=%s (F6 toggle, F8 dump, F9 config reload)",
+    HUD_ASPECT, HUD_WIDTH_FRACTION and tostring(HUD_WIDTH_FRACTION) or "nil", MIN_ASPECT, POLL_MS, tostring(DEV_MODE))
 log("config: %s", tostring(cfgMsg))

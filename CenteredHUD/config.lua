@@ -19,6 +19,11 @@ return {
     -- The mod stays inactive below this screen aspect (16:9 = 1.7778).
     min_aspect = 1.9,
 
+    -- Verbose diagnostics: logs every anchor write and per-class match
+    -- counts to UE4SS.log. Leave off for normal play; turn on (with F9)
+    -- when investigating a misplaced element.
+    dev_mode = false,
+
     -- Widget classes that must keep covering the WHOLE screen instead of
     -- being centered with the rest of the HUD -- screen-space effects like
     -- the cold/frost vignette, heat shimmer, damage flashes. The default

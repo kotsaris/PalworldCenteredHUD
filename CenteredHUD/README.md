@@ -49,6 +49,7 @@ Settings live in `config.lua` in the mod folder. Edit it while the game runs, th
 | `hud_width_fraction` | `nil` | When set (0–1), overrides `hud_aspect`; specifies box width as a fraction of screen width (e.g., 0.5 on 32:9 equals the 16:9 box, 0.7 is gentler) |
 | `hud_height_fraction` | `1.0` | Vertical extent of the box; lower values also pull top/bottom elements inward |
 | `min_aspect` | `1.9` | Mod stays inactive below this screen aspect ratio (keeps vanilla 16:9 behavior) |
+| `dev_mode` | `false` | Verbose diagnostics: logs every anchor write and per-class match counts to UE4SS.log. Leave off for normal play; flip on (then F9) when investigating a misplaced element |
 
 **Advanced Settings:**
 
