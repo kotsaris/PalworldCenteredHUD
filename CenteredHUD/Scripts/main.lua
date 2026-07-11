@@ -34,6 +34,8 @@ local CORE_KEEP_FULLSCREEN = {
     "WBP_EnemyMark_C",                     -- enemy/Pal nameplates: same raw-pixel projection
     "WBP_PalDamageCanvas_OneShotText_C",   -- floating damage numbers: same family
     "WBP_PalNPCHPGaugeCanvas_C",           -- NPC/Pal nameplates + HP bars container
+    "WBP_IngameThermometerEff_C",          -- cold-frost / heat screen effect (thermometer)
+    "WBP_IngameFlyEff_C",                  -- gliding/flying screen effect, same family
 }
 
 -- Working lists: core plus whatever config.lua adds. Rebuilt on every config
@@ -165,10 +167,12 @@ local function findHudCanvas(w)
                 if okG and valid(ch) then queue[#queue + 1] = ch end
             end
         end
-        pcall(function()
-            local sub = node.WidgetTree
-            if valid(sub) and valid(sub.RootWidget) then queue[#queue + 1] = sub.RootWidget end
-        end)
+        if cls:find("^WBP_") or cls:find("^BP_") then
+            pcall(function()
+                local sub = node.WidgetTree
+                if valid(sub) and valid(sub.RootWidget) then queue[#queue + 1] = sub.RootWidget end
+            end)
+        end
     end
     return nil
 end
@@ -342,6 +346,12 @@ end
 -- tree. Originals are captured per slot so the operation is idempotent and
 -- reversible. Returns how many children were (re)positioned this pass.
 local function applyToCanvasChildren(w, box, restore)
+    -- Live instances only: blueprint archetypes (paths under /Game/) have
+    -- widget trees too and must not be modified.
+    local okNm, wName = pcall(function() return w:GetFullName() end)
+    if not okNm then return 0 end
+    local nm = tostring(wName)
+    if nm:find("Default__") or nm:find(" /Game/", 1, true) then return 0 end
     local root = findHudCanvas(w)
     if not valid(root) then return 0 end
     local okC, n = pcall(function() return root:GetChildrenCount() end)
@@ -490,7 +500,8 @@ local function applyKeepFullscreen(box, restore)
                 local wd = list[i]
                 if valid(wd) then
                     local okN, fn = pcall(function() return wd:GetFullName() end)
-                    if okN and not tostring(fn):find("Default__") then
+                    if okN and not tostring(fn):find("Default__")
+                            and not tostring(fn):find(" /Game/", 1, true) then
                         local okS, slot = pcall(function() return wd.Slot end)
                         if okS and valid(slot) then
                             local okK, sc = pcall(function() return slot:GetClass():GetFName():ToString() end)
@@ -547,7 +558,8 @@ local function applyOffsets(zero)
                 local w = list[i]
                 if valid(w) then
                     local okN, fn = pcall(function() return w:GetFullName() end)
-                    if okN and not tostring(fn):find("Default__") then
+                    if okN and not tostring(fn):find("Default__")
+                            and not tostring(fn):find(" /Game/", 1, true) then
                         local okT, errT = pcall(function() w:SetRenderTranslation({ X = dx, Y = dy }) end)
                         if okT then
                             matched = matched + 1
@@ -701,7 +713,10 @@ RegisterKeyBind(KEY_DUMP, function()
             -- can see where the HUD canvas lives and what anchors its children
             -- have. Anchor values go through %s: struct field reads can come
             -- back as non-numeric userdata on this UE4SS build.
-            for _, cls in ipairs(TARGET_WIDGETS) do
+            -- Also walk WBP_PlayerUI_C: it hosts the vignettes and other
+            -- overlays, and unidentified screen effects hide in its tree.
+            local walkList = mergedList(TARGET_WIDGETS, { "WBP_PlayerUI_C" })
+            for _, cls in ipairs(walkList) do
                 local okF, insts = pcall(FindAllOf, cls)
                 if okF and insts then
                     for j = 1, #insts do
@@ -709,13 +724,13 @@ RegisterKeyBind(KEY_DUMP, function()
                         if valid(tw) then
                             local okN2, fn2 = pcall(function() return tw:GetFullName() end)
                             local nm = okN2 and tostring(fn2) or "?"
-                            if not nm:find("Default__") then
+                            if not nm:find("Default__") and not nm:find(" /Game/", 1, true) then
                                 local okR, root = pcall(function() return tw.WidgetTree.RootWidget end)
                                 if okR and valid(root) then
                                     print(string.format("[CenteredHUD] tree walk of %s:\n", cls))
                                     local stack = { { node = root, depth = 0 } }
                                     local scanned = 0
-                                    while #stack > 0 and scanned < 100 do
+                                    while #stack > 0 and scanned < 150 do
                                         local e = table.remove(stack)
                                         scanned = scanned + 1
                                         local node = e.node
@@ -727,22 +742,30 @@ RegisterKeyBind(KEY_DUMP, function()
                                             local s = node.Slot
                                             if valid(s) then
                                                 scName = tostring(s:GetClass():GetFName():ToString())
-                                                local a = readAnchors(s)
-                                                if a then
-                                                    aTxt = string.format(" anchors=(%s,%s)-(%s,%s)",
-                                                        tostring(a.minX), tostring(a.minY),
-                                                        tostring(a.maxX), tostring(a.maxY))
+                                                -- LayoutData only exists on canvas slots; resolving
+                                                -- it against other slot types can crash natively.
+                                                if scName == "CanvasPanelSlot" then
+                                                    local a = readAnchors(s)
+                                                    if a then
+                                                        aTxt = string.format(" anchors=(%s,%s)-(%s,%s)",
+                                                            tostring(a.minX), tostring(a.minY),
+                                                            tostring(a.maxX), tostring(a.maxY))
+                                                    end
                                                 end
                                             end
                                         end)
                                         print(string.format("[CenteredHUD] %s- %s slot=%s%s\n",
                                             string.rep("  ", e.depth), nc, scName, aTxt))
-                                        pcall(function()
-                                            local sub = node.WidgetTree
-                                            if valid(sub) and valid(sub.RootWidget) then
-                                                stack[#stack + 1] = { node = sub.RootWidget, depth = e.depth + 1 }
-                                            end
-                                        end)
+                                        -- Only blueprint user widgets have a WidgetTree; probing
+                                        -- the property on primitive widgets risks a native crash.
+                                        if nc:find("^WBP_") or nc:find("^BP_") then
+                                            pcall(function()
+                                                local sub = node.WidgetTree
+                                                if valid(sub) and valid(sub.RootWidget) then
+                                                    stack[#stack + 1] = { node = sub.RootWidget, depth = e.depth + 1 }
+                                                end
+                                            end)
+                                        end
                                         -- Depth-first, children pushed in reverse: prints a
                                         -- properly nested tree so parent/child is unambiguous.
                                         local okC, n = pcall(function() return node:GetChildrenCount() end)
@@ -831,6 +854,6 @@ RegisterKeyBind(KEY_RELOAD_CFG, function()
 end)
 
 local _, cfgMsg = loadUserConfig()
-log("v2.4 loaded -- hud_aspect=%.4f (or width_frac=%s), min_aspect=%.4f, poll=%dms (F6 toggle, F8 dump, F9 config reload)",
+log("v2.7 loaded -- hud_aspect=%.4f (or width_frac=%s), min_aspect=%.4f, poll=%dms (F6 toggle, F8 dump, F9 config reload)",
     HUD_ASPECT, HUD_WIDTH_FRACTION and tostring(HUD_WIDTH_FRACTION) or "nil", MIN_ASPECT, POLL_MS)
 log("config: %s", tostring(cfgMsg))
