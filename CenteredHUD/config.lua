@@ -24,6 +24,15 @@ return {
     -- when investigating a misplaced element.
     dev_mode = false,
 
+    -- ADDITIONS to the built-in list of widget classes the mod re-anchors
+    -- (the HUD layout itself is built in). Use this when an element stays
+    -- at the far screen edge because it lives outside the main layout
+    -- widget. Discover class names with the F8 dump. Entries merge with
+    -- the core list; they can never remove core entries.
+    -- target_widgets_extra = {
+    --     "WBP_SomeStrayHudWidget_C",
+    -- },
+
     -- Widget classes that must keep covering the WHOLE screen instead of
     -- being centered with the rest of the HUD -- screen-space effects like
     -- the cold/frost vignette, heat shimmer, damage flashes. The default

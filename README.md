@@ -22,6 +22,10 @@ The latest release is available on the [Releases page](https://github.com/kotsar
 
 ## Install
 
+**Via Vortex** (verified working): install the ["UE4SS Palworld" package from Nexus Mods](https://www.nexusmods.com/palworld/mods/3035), then add `CenteredHUD.zip` with **Install From File**, enable both, and deploy.
+
+**Manually:**
+
 1. Extract the `CenteredHUD.zip` into your Palworld mod directory:
    ```
    <Palworld>\Pal\Binaries\Win64\ue4ss\Mods\
@@ -29,9 +33,7 @@ The latest release is available on the [Releases page](https://github.com/kotsar
    
 2. Verify the structure — you should have `Mods\CenteredHUD\Scripts\main.lua` after extraction.
 
-3. The mod requires:
-   - **Palworld 1.0** (Steam)
-   - **RE-UE4SS** experimental-palworld build
+See [CenteredHUD/README.md](CenteredHUD/README.md#installation) for full instructions, including installing UE4SS itself.
 
 ## Bonus: TimeSet
 
@@ -46,7 +48,7 @@ For technical details on how the mod works, see [FINDINGS.md](FINDINGS.md).
 ## Requirements
 
 - Palworld 1.0 (Steam)
-- RE-UE4SS experimental-palworld build
+- RE-UE4SS experimental-palworld build — as the ["UE4SS Palworld" Vortex package on Nexus](https://www.nexusmods.com/palworld/mods/3035) or [`UE4SS-Palworld.zip` from the official GitHub release](https://github.com/Okaetsu/RE-UE4SS/releases/tag/experimental-palworld)
 
 ## License
 
