@@ -58,6 +58,11 @@ return {
     offsets = {
         -- Compass bar (top center):
         -- ["WBP_Ingame_Compass_C"] = { dx = 0, dy = 0 },
+
+        -- Weapon/equip selector (bottom right). Example values tuned on
+        -- 5120x1440 (32:9); other aspects need different dx.
+        -- ["WBP_Ingame_WeaponChange_C"]     = { dx = -970, dy = -50 },
+        -- ["WBP_Ingame_WeaponChangeList_C"] = { dx = -470, dy = -30 },
     },
 
     -- Per-widget opacity multipliers (0 = invisible, 1 = vanilla). Applied
