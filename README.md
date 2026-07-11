@@ -1,8 +1,8 @@
 # PalworldCenteredHUD
 
-> **Work in progress** — this mod is under active development and currently tested against a single setup (Palworld 1.0 on Steam at 5120x1440). Expect rough edges; issues and reports are welcome.
+> **Work in progress** — this mod is under active development. Tested against Palworld 1.0 on Steam, build **v1.0.0.100427** (July 2026), at 5120x1440 (32:9) and 3440x1440 (21:9). Expect rough edges; issues and reports are welcome.
 
-> **One download for every ultrawide** — the mod computes its layout from your actual screen aspect at runtime, so the same release works on 21:9 (3440x1440, 2560x1080), 32:9, and 48:9 triple-wide. Anything at or below 16:9 is automatically left vanilla. Only 32:9 has been hand-verified so far — reports from other aspects are especially welcome.
+> **One download for every ultrawide** — the mod computes its layout from your actual screen aspect at runtime, so the same release works on 21:9 (3440x1440, 2560x1080), 32:9, and 48:9 triple-wide. Anything at or below 16:9 is automatically left vanilla. 32:9 and 21:9 have been hand-verified so far — reports from other aspects are especially welcome.
 
 A UE4SS Lua mod that pulls Palworld's HUD toward the center on ultrawide and super-ultrawide displays (21:9 / 32:9). Features live toggle, config file, and per-widget tweaks for precise control over HUD element positioning.
 
@@ -47,7 +47,7 @@ For technical details on how the mod works, see [FINDINGS.md](FINDINGS.md).
 
 ## Requirements
 
-- Palworld 1.0 (Steam)
+- Palworld 1.0 (Steam) — last verified on build v1.0.0.100427 (July 2026)
 - RE-UE4SS experimental-palworld build — as the ["UE4SS Palworld" Vortex package on Nexus](https://www.nexusmods.com/palworld/mods/3035) or [`UE4SS-Palworld.zip` from the official GitHub release](https://github.com/Okaetsu/RE-UE4SS/releases/tag/experimental-palworld)
 
 ## License

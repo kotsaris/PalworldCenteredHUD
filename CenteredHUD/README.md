@@ -12,7 +12,7 @@ The mod only activates on displays wider than a configurable aspect threshold. O
 
 ## Requirements
 
-- Palworld 1.0 (Steam)
+- Palworld 1.0 (Steam) — last verified on build v1.0.0.100427, the version shown top-left in-game while mods are active
 - RE-UE4SS, experimental-palworld build — get it either way:
   - **Via Vortex:** the ["UE4SS (RE-UE4SS Okaetsu Experimental-Palworld)"](https://www.nexusmods.com/palworld/mods/3035) package on Nexus Mods (shows up as "UE4SS Palworld" in the Vortex mod list)
   - **Manually:** `UE4SS-Palworld.zip` from the [official GitHub release](https://github.com/Okaetsu/RE-UE4SS/releases/tag/experimental-palworld)
