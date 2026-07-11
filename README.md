@@ -1,5 +1,7 @@
 # PalworldCenteredHUD
 
+> **Work in progress** — this mod is under active development and currently tested against a single setup (Palworld 1.0 on Steam at 5120x1440). Expect rough edges; issues and reports are welcome.
+
 A UE4SS Lua mod that pulls Palworld's HUD toward the center on ultrawide and super-ultrawide displays (21:9 / 32:9). Features live toggle, config file, and per-widget tweaks for precise control over HUD element positioning.
 
 ## Before / After
