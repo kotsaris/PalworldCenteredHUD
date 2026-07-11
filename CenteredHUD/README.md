@@ -57,6 +57,7 @@ Settings live in `config.lua` in the mod folder. Edit it while the game runs, th
 | `target_widgets_extra` | `{}` | ADDITIONS to the mod's built-in list of widget classes to re-anchor (the HUD layout itself is built in); discover class names via the F8 dump |
 | `keep_fullscreen_extra` | `{}` | ADDITIONS to the mod's built-in keep-fullscreen list. The core entries — stamina arc, enemy bars, damage numbers, damage/low-health/frost vignettes, dispatch receiver — ship inside the mod and cannot be removed via config. Add a class here if a game patch introduces a new overlay that shows up misplaced |
 | `offsets` | `{}` | Per-widget pixel nudges for statically anchored elements only. Table format: `["WidgetClass_C"] = { dx = ..., dy = ... }`. Positive dx moves right, positive dy moves down (UI units, roughly pixels at 1440p). Class names come from the F8 dump. Example: `["WBP_Ingame_Compass_C"] = { dx = 0, dy = 0 }`. Do not use offsets for elements the game moves every frame — put those in `keep_fullscreen` |
+| `opacity` | `{}` | Per-widget opacity multipliers, `["WidgetClass_C"] = 0..1` (1 = vanilla). Applied at the widget level, so game-driven fade animations keep working underneath. Example: `["WBP_IngameThermometerEff_C"] = 0.5` softens the cold-frost screen effect |
 | `dump_match` | `{ "Stamina", "Compass", ... }` | Class-name fragments the F8 dump searches across all live widgets, for discovering an element's real class name |
 
 ## Verify It Works

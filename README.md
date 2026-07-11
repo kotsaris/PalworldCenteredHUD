@@ -31,6 +31,10 @@ The latest release is available on the [Releases page](https://github.com/kotsar
    - **Palworld 1.0** (Steam)
    - **RE-UE4SS** experimental-palworld build
 
+## Bonus: TimeSet
+
+The repo also contains [TimeSet](TimeSet/) — a tiny standalone UE4SS mod born as a development aid: press HOME to jump the world clock straight to night, END for morning (useful for testing weather/lighting-dependent HUD effects). Install it the same way: copy the `TimeSet` folder into `ue4ss\Mods\`.
+
 ## Usage & Configuration
 
 Full usage guide and configuration options are in [CenteredHUD/README.md](CenteredHUD/README.md).

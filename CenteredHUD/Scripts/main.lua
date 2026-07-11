@@ -96,6 +96,9 @@ local originals = {}
 -- Per-widget-class visual nudges from config.lua: class name -> {dx, dy}.
 local OFFSETS = {}
 
+-- Per-widget-class opacity multipliers from config.lua: class name -> 0..1.
+local OPACITY = {}
+
 -- Originals for KEEP_FULLSCREEN slots, kept apart from the wrapper originals:
 -- the stray-repair pass restores anything found in `originals`, and the
 -- expanded effect overlays must not be caught by it.
@@ -213,6 +216,7 @@ local function loadUserConfig()
     KEEP_FULLSCREEN = mergedList(CORE_KEEP_FULLSCREEN, cfg.keep_fullscreen, cfg.keep_fullscreen_extra)
     if type(cfg.dump_match) == "table" then DUMP_MATCH = cfg.dump_match end
     OFFSETS = (type(cfg.offsets) == "table") and cfg.offsets or {}
+    OPACITY = (type(cfg.opacity) == "table") and cfg.opacity or {}
     local n = 0
     for _ in pairs(OFFSETS) do n = n + 1 end
     return true, string.format("config.lua applied, %d offset entr%s", n, n == 1 and "y" or "ies")
@@ -581,6 +585,37 @@ local function applyOffsets(zero)
     end
 end
 
+-- Applies (or resets) per-class opacity multipliers from the config file.
+-- RenderOpacity is a widget-level multiplier, so game-driven fades on inner
+-- images still work underneath it.
+local opacityMatchLogged = {}
+
+local function applyOpacity(reset)
+    for clsName, val in pairs(OPACITY) do
+        local a = reset and 1 or math.max(0, math.min(1, tonumber(val) or 1))
+        local matched = 0
+        local ok, list = pcall(FindAllOf, clsName)
+        if ok and list then
+            for i = 1, #list do
+                local w = list[i]
+                if valid(w) then
+                    local okN, fn = pcall(function() return w:GetFullName() end)
+                    if okN and not tostring(fn):find("Default__")
+                            and not tostring(fn):find(" /Game/", 1, true) then
+                        local okT = pcall(function() w:SetRenderOpacity(a) end)
+                        if okT then matched = matched + 1 end
+                    end
+                end
+            end
+        end
+        if opacityMatchLogged[clsName] ~= matched and logCount < logLimit then
+            log("opacity %s: matched %d live instance(s)", clsName, matched)
+            logCount = logCount + 1
+            opacityMatchLogged[clsName] = matched
+        end
+    end
+end
+
 local function enforce()
     if not enabled then return end
     local box = anchorBox()
@@ -588,6 +623,7 @@ local function enforce()
     tick = tick + 1
     if tick % REASSERT_TICKS == 0 then applied = {} end
     applyOffsets(false)
+    applyOpacity(false)
     applyKeepFullscreen(box, false)
     for _, cls in ipairs(TARGET_WIDGETS) do
         local ok, list = pcall(FindAllOf, cls)
@@ -638,6 +674,7 @@ local function restoreVanilla()
         end
     end
     applyOffsets(true)
+    applyOpacity(true)
     applyKeepFullscreen(nil, true)
     applied = {}
     log("restored vanilla anchors")
@@ -854,6 +891,6 @@ RegisterKeyBind(KEY_RELOAD_CFG, function()
 end)
 
 local _, cfgMsg = loadUserConfig()
-log("v2.7 loaded -- hud_aspect=%.4f (or width_frac=%s), min_aspect=%.4f, poll=%dms (F6 toggle, F8 dump, F9 config reload)",
+log("v2.8 loaded -- hud_aspect=%.4f (or width_frac=%s), min_aspect=%.4f, poll=%dms (F6 toggle, F8 dump, F9 config reload)",
     HUD_ASPECT, HUD_WIDTH_FRACTION and tostring(HUD_WIDTH_FRACTION) or "nil", MIN_ASPECT, POLL_MS)
 log("config: %s", tostring(cfgMsg))

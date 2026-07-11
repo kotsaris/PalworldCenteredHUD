@@ -45,4 +45,11 @@ return {
         -- Compass bar (top center):
         -- ["WBP_Ingame_Compass_C"] = { dx = 0, dy = 0 },
     },
+
+    -- Per-widget opacity multipliers (0 = invisible, 1 = vanilla). Applied
+    -- as a widget-level multiplier, so game-driven fade animations still
+    -- work underneath. Example: soften the cold-frost screen effect.
+    opacity = {
+        -- ["WBP_IngameThermometerEff_C"] = 0.5,
+    },
 }
