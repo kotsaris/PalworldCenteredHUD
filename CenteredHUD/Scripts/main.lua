@@ -14,13 +14,18 @@ local HUD_ASPECT = 16 / 9              -- 16:9 box; larger values pull elements 
 local HUD_WIDTH_FRACTION = nil          -- nil = use HUD_ASPECT; 0.5 on 32:9 = 16:9 box
 local HUD_HEIGHT_FRACTION = 1.0         -- vertical extent of the box
 local MIN_ASPECT = 1.9                  -- do nothing unless screen width/height >= this
-local TARGET_WIDGETS = { "WBP_PalHUDLayout_C" }  -- widget classes to re-anchor
+-- Core widget lists. These are correctness requirements of the mod, not
+-- preferences: config.lua can only ADD to them (via *_extra keys, e.g. after
+-- a game patch introduces a new overlay), never replace them.
+local CORE_TARGET_WIDGETS = { "WBP_PalHUDLayout_C" }  -- widget classes to re-anchor
 local FALLBACK_W, FALLBACK_H = 5120, 1440       -- fallback resolution
 
--- Widget classes that must keep covering the WHOLE screen (frost/heat
--- vignettes, damage flashes). They get counter-expanded by the inverse of
--- the squeeze. Override via config.lua's keep_fullscreen list.
-local KEEP_FULLSCREEN = {
+-- Widget classes that must keep covering the WHOLE screen. They get
+-- counter-expanded by the inverse of the squeeze. Two kinds live here:
+-- screen-space effect overlays, and widgets the game positions per frame
+-- in raw full-viewport pixels (which render misplaced inside a squeezed
+-- canvas). All are required for correctness.
+local CORE_KEEP_FULLSCREEN = {
     "WBP_PalHUD_InGame_GeneralDispatchEventReciever_C",
     "WBP_IngameDamageVinette_C",           -- damage / low-health / cold-frost vignettes
     "WBP_Ingame_PlayerStamina_Circle_C",   -- stamina arc: game positions it per frame
@@ -31,10 +36,34 @@ local KEEP_FULLSCREEN = {
     "WBP_PalNPCHPGaugeCanvas_C",           -- NPC/Pal nameplates + HP bars container
 }
 
+-- Working lists: core plus whatever config.lua adds. Rebuilt on every config
+-- (re)load from the pristine core lists so removals in config take effect.
+local TARGET_WIDGETS = CORE_TARGET_WIDGETS
+local KEEP_FULLSCREEN = CORE_KEEP_FULLSCREEN
+
+local function mergedList(core, extraA, extraB)
+    local out, seen = {}, {}
+    for _, v in ipairs(core) do
+        out[#out + 1] = v
+        seen[v] = true
+    end
+    for _, extra in ipairs({ extraA or false, extraB or false }) do
+        if type(extra) == "table" then
+            for _, v in ipairs(extra) do
+                if type(v) == "string" and not seen[v] then
+                    out[#out + 1] = v
+                    seen[v] = true
+                end
+            end
+        end
+    end
+    return out
+end
+
 -- Class-name fragments the F8 dump searches for across ALL live widgets,
 -- printing full name + hosting info. Used to find the real class name of an
 -- element before adding it to offsets. Override via config.lua's dump_match.
-local DUMP_MATCH = { "Stamina", "Compass", "Vinette", "Effect", "Cold" }
+local DUMP_MATCH = { "Stamina", "Compass", "Vinette", "Effect", "Cold", "Weapon" }
 local POLL_MS = 1000                    -- enforcement poll interval in ms
 local REASSERT_TICKS = 30               -- every N polls, re-apply (catches widget recycling)
 local KEY_TOGGLE = Key.F6               -- toggle centered/vanilla
@@ -161,6 +190,8 @@ end
 -- Parses config.lua and overrides the defaults above. Pure parse: no game
 -- objects are touched, so it is safe to call from the main chunk at load.
 local function loadUserConfig()
+    TARGET_WIDGETS = mergedList(CORE_TARGET_WIDGETS)
+    KEEP_FULLSCREEN = mergedList(CORE_KEEP_FULLSCREEN)
     local path = configFilePath()
     local f = io.open(path, "r")
     if not f then return false, "no config.lua, using built-in defaults" end
@@ -172,8 +203,10 @@ local function loadUserConfig()
     HUD_WIDTH_FRACTION = (type(cfg.hud_width_fraction) == "number") and cfg.hud_width_fraction or nil
     if type(cfg.hud_height_fraction) == "number" then HUD_HEIGHT_FRACTION = cfg.hud_height_fraction end
     if type(cfg.min_aspect) == "number" then MIN_ASPECT = cfg.min_aspect end
-    if type(cfg.target_widgets) == "table" and #cfg.target_widgets > 0 then TARGET_WIDGETS = cfg.target_widgets end
-    if type(cfg.keep_fullscreen) == "table" then KEEP_FULLSCREEN = cfg.keep_fullscreen end
+    -- Core lists are mod internals; config entries MERGE into them (both the
+    -- legacy key names and the *_extra names are accepted as additions).
+    TARGET_WIDGETS = mergedList(CORE_TARGET_WIDGETS, cfg.target_widgets, cfg.target_widgets_extra)
+    KEEP_FULLSCREEN = mergedList(CORE_KEEP_FULLSCREEN, cfg.keep_fullscreen, cfg.keep_fullscreen_extra)
     if type(cfg.dump_match) == "table" then DUMP_MATCH = cfg.dump_match end
     OFFSETS = (type(cfg.offsets) == "table") and cfg.offsets or {}
     local n = 0
@@ -798,6 +831,6 @@ RegisterKeyBind(KEY_RELOAD_CFG, function()
 end)
 
 local _, cfgMsg = loadUserConfig()
-log("v2.3 loaded -- hud_aspect=%.4f (or width_frac=%s), min_aspect=%.4f, poll=%dms (F6 toggle, F8 dump, F9 config reload)",
+log("v2.4 loaded -- hud_aspect=%.4f (or width_frac=%s), min_aspect=%.4f, poll=%dms (F6 toggle, F8 dump, F9 config reload)",
     HUD_ASPECT, HUD_WIDTH_FRACTION and tostring(HUD_WIDTH_FRACTION) or "nil", MIN_ASPECT, POLL_MS)
 log("config: %s", tostring(cfgMsg))

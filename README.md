@@ -2,6 +2,16 @@
 
 A UE4SS Lua mod that pulls Palworld's HUD toward the center on ultrawide and super-ultrawide displays (21:9 / 32:9). Features live toggle, config file, and per-widget tweaks for precise control over HUD element positioning.
 
+## Before / After
+
+Vanilla on a 5120x1440 (32:9) display — HUD elements pinned to the far edges:
+
+![Before: vanilla ultrawide HUD](docs/before.png)
+
+With CenteredHUD — the HUD framed in a centered 16:9 region:
+
+![After: centered HUD](docs/after.png)
+
 ## Download
 
 The latest release is available on the [Releases page](https://github.com/kotsaris/PalworldCenteredHUD/releases). Each release includes a ready-to-install `CenteredHUD.zip` containing the mod.

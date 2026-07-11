@@ -54,8 +54,8 @@ Settings live in `config.lua` in the mod folder. Edit it while the game runs, th
 
 | Setting | Default | Description |
 |---------|---------|-------------|
-| `target_widgets` | `{ "WBP_PalHUDLayout_C" }` | Widget classes to re-anchor; discover additional classes via the F8 dump |
-| `keep_fullscreen` | dispatch receiver, damage/frost vignette, stamina arc, enemy mark, damage numbers, NPC HP gauges | Widget classes that must keep covering the whole screen instead of being centered. Two kinds belong here: screen-space effects (frost/damage/low-health vignettes) and widgets the game repositions every frame in raw viewport pixels (the stamina arc) — the latter render in the wrong place inside a squeezed canvas and need their full-screen coordinate space back |
+| `target_widgets_extra` | `{}` | ADDITIONS to the mod's built-in list of widget classes to re-anchor (the HUD layout itself is built in); discover class names via the F8 dump |
+| `keep_fullscreen_extra` | `{}` | ADDITIONS to the mod's built-in keep-fullscreen list. The core entries — stamina arc, enemy bars, damage numbers, damage/low-health/frost vignettes, dispatch receiver — ship inside the mod and cannot be removed via config. Add a class here if a game patch introduces a new overlay that shows up misplaced |
 | `offsets` | `{}` | Per-widget pixel nudges for statically anchored elements only. Table format: `["WidgetClass_C"] = { dx = ..., dy = ... }`. Positive dx moves right, positive dy moves down (UI units, roughly pixels at 1440p). Class names come from the F8 dump. Example: `["WBP_Ingame_Compass_C"] = { dx = 0, dy = 0 }`. Do not use offsets for elements the game moves every frame — put those in `keep_fullscreen` |
 | `dump_match` | `{ "Stamina", "Compass", ... }` | Class-name fragments the F8 dump searches across all live widgets, for discovering an element's real class name |
 

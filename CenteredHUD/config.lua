@@ -23,17 +23,15 @@ return {
     -- being centered with the rest of the HUD -- screen-space effects like
     -- the cold/frost vignette, heat shimmer, damage flashes. The default
     -- entry hosts Palworld's dispatched screen effects.
-    -- NOTE: widgets the game repositions every frame in raw viewport pixels
-    -- (like the stamina arc) also belong here, NOT in offsets -- they need
-    -- their full-screen coordinate space back, not a nudge.
-    keep_fullscreen = {
-        "WBP_PalHUD_InGame_GeneralDispatchEventReciever_C",
-        "WBP_IngameDamageVinette_C",
-        "WBP_Ingame_PlayerStamina_Circle_C",
-        "WBP_EnemyMark_C",
-        "WBP_PalDamageCanvas_OneShotText_C",
-        "WBP_PalNPCHPGaugeCanvas_C",
-    },
+    -- The widgets that must keep covering the whole screen (stamina arc,
+    -- enemy bars, damage numbers, damage/frost vignettes...) are built into
+    -- the mod -- you do not list them here. This key only ADDS classes on
+    -- top of that core list, e.g. if a game patch introduces a new overlay
+    -- that shows up misplaced. Entries merge; they can never remove core
+    -- entries.
+    -- keep_fullscreen_extra = {
+    --     "WBP_SomeNewOverlay_C",
+    -- },
 
     -- Class-name fragments the F8 dump searches for across all live widgets.
     -- Use this to discover the real class name of an element before adding
