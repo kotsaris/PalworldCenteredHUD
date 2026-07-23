@@ -45,6 +45,9 @@ return {
     -- entries.
     -- keep_fullscreen_extra = {
     --     "WBP_SomeNewOverlay_C",
+    --     -- Prefer the quest banner / Base Info / Base Missions column at the
+    --     -- true right screen edge instead of centered? Uncomment:
+    --     -- "WBP_QuestAndBaseCampInfoCanvas_C",
     -- },
 
     -- Class-name fragments the F8 dump searches for across all live widgets.

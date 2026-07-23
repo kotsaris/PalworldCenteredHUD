@@ -36,6 +36,10 @@ local CORE_KEEP_FULLSCREEN = {
     "WBP_PalNPCHPGaugeCanvas_C",           -- NPC/Pal nameplates + HP bars container
     "WBP_IngameThermometerEff_C",          -- cold-frost / heat screen effect (thermometer)
     "WBP_IngameFlyEff_C",                  -- gliding/flying screen effect, same family
+    "WBP_Ingame_InteractDurability_C",     -- HP/owner/craft-progress tooltip on the
+                                           -- building you look at: same family
+    "WBP_ConvertItemStatusIndicator_C",    -- craft-progress panel over a workbench
+                                           -- (item, count, Pal, circular gauge): same family
 }
 
 -- Working lists: core plus whatever config.lua adds. Rebuilt on every config
@@ -939,6 +943,6 @@ RegisterKeyBind(KEY_RELOAD_CFG, function()
 end)
 
 local _, cfgMsg = loadUserConfig()
-log("v2.9 loaded -- hud_aspect=%.4f (or width_frac=%s), min_aspect=%.4f, poll=%dms, dev_mode=%s (F6 toggle, F8 dump, F9 config reload)",
+log("v2.13 (craft-progress indicator fullscreen) loaded -- hud_aspect=%.4f (or width_frac=%s), min_aspect=%.4f, poll=%dms, dev_mode=%s (F6 toggle, F8 dump, F9 config reload)",
     HUD_ASPECT, HUD_WIDTH_FRACTION and tostring(HUD_WIDTH_FRACTION) or "nil", MIN_ASPECT, POLL_MS, tostring(DEV_MODE))
 log("config: %s", tostring(cfgMsg))
